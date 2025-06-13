@@ -26,32 +26,14 @@ class ImageGenerator:
             api_key=api_key,
         )
     
-    def enhance_prompt_for_pixelated(self, prompt):
-        """Enhance the user prompt to ensure pixelated style"""
-        pixelated_keywords = [
-            "pixel art style",
-            "8-bit",
-            "pixelated",
-            "retro gaming style",
-            "low resolution",
-            "blocky pixels"
-        ]
-        
-        # Add instructions to isolate the object with transparent background
-        enhanced_prompt = (
-            f"{prompt}, pixel art style, 8-bit, pixelated, retro gaming aesthetic, "
-            "low resolution, blocky pixels, digital art, isolated object centered on a white background. Make sure to just render the object and to not render anything behind it. The rest of the image should just be the plain white background."
-        )
-        return enhanced_prompt
-    
+   
     def generate_image(self, prompt, size="1024x1024"):
         """Generate a new pixelated image from prompt"""
         try:
-            enhanced_prompt = self.enhance_prompt_for_pixelated(prompt)
-            
+           
             response = self.client.images.generate(
                 model="dall-e-3",
-                prompt=enhanced_prompt,
+                prompt=prompt,
                 size=size,
                 quality="standard",
                 n=1,

@@ -60,6 +60,9 @@ class ImageGeneratorApp:
         self.canvas = tk.Canvas(canvas_frame, bg='white', width=600, height=600)
         self.canvas.pack(fill=tk.BOTH, expand=True)
         
+        # Create checkered background pattern
+        self.create_checkered_background()
+        
         # Scrollbars for canvas
         v_scrollbar = ttk.Scrollbar(canvas_frame, orient=tk.VERTICAL, command=self.canvas.yview)
         h_scrollbar = ttk.Scrollbar(canvas_frame, orient=tk.HORIZONTAL, command=self.canvas.xview)
@@ -74,6 +77,42 @@ class ImageGeneratorApp:
         ttk.Button(canvas_controls, text="Clear Canvas", command=self.clear_canvas).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(canvas_controls, text="Copy to Clipboard", command=self.copy_to_clipboard).pack(side=tk.LEFT)
     
+    def create_checkered_background(self):
+        """Create a checkered background pattern on the canvas"""
+        # Clear any existing background
+        self.canvas.delete("background")
+        
+        # Get canvas dimensions
+        width = self.canvas.winfo_reqwidth()
+        height = self.canvas.winfo_reqheight()
+        
+        # If canvas isn't initialized yet, use default size
+        if width <= 1 or height <= 1:
+            width, height = 600, 600
+        
+        # Checkered pattern settings
+        square_size = 20
+        color1 = "#f0f0f0"  # Light gray
+        color2 = "#e0e0e0"  # Slightly darker gray
+        
+        # Draw checkered pattern
+        for row in range(0, height // square_size + 1):
+            for col in range(0, width // square_size + 1):
+                x1 = col * square_size
+                y1 = row * square_size
+                x2 = x1 + square_size
+                y2 = y1 + square_size
+                
+                # Alternate colors
+                color = color1 if (row + col) % 2 == 0 else color2
+                
+                self.canvas.create_rectangle(
+                    x1, y1, x2, y2,
+                    fill=color,
+                    outline=color,
+                    tags="background"
+                )
+    
     def create_chat_section(self, parent):
         """Create the chat/prompt section"""
         chat_frame = ttk.LabelFrame(parent, text="AI Chat", padding="10")
@@ -84,11 +123,14 @@ class ImageGeneratorApp:
         self.chat_history = scrolledtext.ScrolledText(chat_frame, width=35, height=20, wrap=tk.WORD)
         self.chat_history.pack(fill=tk.BOTH, expand=True)
         self.chat_history.insert(tk.END, "Welcome to AI Pixelated Image Generator!\n\n")
-        self.chat_history.insert(tk.END, "Enter a prompt below to generate pixelated images.\n")
-        self.chat_history.insert(tk.END, "Examples:\n")
-        self.chat_history.insert(tk.END, "- 'a cat sitting on a tree'\n")
-        self.chat_history.insert(tk.END, "- 'futuristic city at sunset'\n")
-        self.chat_history.insert(tk.END, "- 'medieval castle on a hill'\n\n")
+        self.chat_history.insert(tk.END, "Enter a prompt below to generate isometric pixel art.\n")
+        self.chat_history.insert(tk.END, "Examples (just the object name):\n")
+        self.chat_history.insert(tk.END, "- 'treasure chest'\n")
+        self.chat_history.insert(tk.END, "- 'medieval knight'\n")
+        self.chat_history.insert(tk.END, "- 'magic potion bottle'\n")
+        self.chat_history.insert(tk.END, "- 'fantasy sword'\n")
+        self.chat_history.insert(tk.END, "\nNote: Background removal happens automatically!\n\n")
+        self.chat_history.insert(tk.END, "\nNote: Background removal happens automatically!\n\n")
         
         # Prompt input
         prompt_frame = ttk.Frame(chat_frame)
@@ -120,9 +162,9 @@ class ImageGeneratorApp:
         # Tool buttons
         tool_buttons = ttk.Frame(tools_frame)
         tool_buttons.pack(fill=tk.X)
-        
         ttk.Button(tool_buttons, text="More Pixelated", command=self.apply_more_pixelation).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(tool_buttons, text="Less Pixelated", command=self.apply_less_pixelation).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(tool_buttons, text="Remove Background", command=self.remove_background).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(tool_buttons, text="Increase Contrast", command=self.increase_contrast).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(tool_buttons, text="Increase Brightness", command=self.increase_brightness).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(tool_buttons, text="Resize Image", command=self.resize_image).pack(side=tk.LEFT)
@@ -144,7 +186,12 @@ class ImageGeneratorApp:
     
     def get_prompt(self):
         """Get prompt from entry widget"""
-        return self.prompt_entry.get("1.0", tk.END).strip()
+        base_prompt = self.prompt_entry.get("1.0", tk.END).strip()
+        if base_prompt: 
+            # Automatically enhance prompt for isometric pixel art
+            enhanced_prompt = f"Isometric pixel art of a {base_prompt}, rendered as a cutout game sprite with no background, similar to a transparent PNG."
+            return enhanced_prompt
+        return base_prompt
     
     def clear_prompt(self):
         """Clear the prompt entry"""
@@ -224,6 +271,9 @@ class ImageGeneratorApp:
     
     def on_generation_complete(self, image, message):
         """Handle successful image generation"""
+        # Automatically remove background from generated images
+        image = ImageProcessor.remove_background(image)
+        
         self.display_image(image)
         self.add_to_chat(message, "System")
         self.clear_prompt()
@@ -349,7 +399,8 @@ class ImageGeneratorApp:
         if not self.current_image:
             messagebox.showwarning("Warning", "No image to resize")
             return
-          # Simple resize dialog
+        
+        # Simple resize dialog
         new_size = simpledialog.askstring("Resize", "Enter new size (width,height):", initialvalue="512,512")
         if new_size:
             try:
@@ -359,6 +410,17 @@ class ImageGeneratorApp:
                 self.add_to_chat(f"Resized to {width}x{height}", "System")
             except ValueError:
                 messagebox.showerror("Error", "Invalid size format. Use 'width,height'")
+    
+    def remove_background(self):
+        """Remove background from current image"""
+        if not self.current_image:
+            messagebox.showwarning("Warning", "No image to process")
+            return
+        
+        # Use the background removal method from ImageProcessor
+        processed = ImageProcessor.remove_background(self.current_image)
+        self.display_image(processed)
+        self.add_to_chat("Background removed", "System")
 
 def main():
     root = tk.Tk()

@@ -4,6 +4,8 @@ Image processing utilities
 
 from PIL import Image, ImageFilter, ImageEnhance
 import os
+from rembg import remove
+from io import BytesIO
 
 class ImageProcessor:
     @staticmethod
@@ -55,3 +57,19 @@ class ImageProcessor:
         except Exception as e:
             print(f"Error loading image: {e}")
             return None
+    
+    @staticmethod
+    def remove_background(image):
+        """Remove background using rembg"""
+        # Ensure RGBA
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
+        # Convert to bytes
+        buf = BytesIO()
+        image.save(buf, format='PNG')
+        img_bytes = buf.getvalue()
+        # Call rembg
+        result_bytes = remove(img_bytes)
+        # Load back to PIL Image
+        new_image = Image.open(BytesIO(result_bytes)).convert('RGBA')
+        return new_image
