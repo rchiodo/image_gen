@@ -1,0 +1,1 @@
+2D sprite of a "{prompt}", with no shadows, 8-bit style, pixelated, not on any sort of platform, floating on a white background. DO NOT draw anything but the "{prompt}"

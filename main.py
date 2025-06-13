@@ -11,11 +11,13 @@ from datetime import datetime
 import win32clipboard
 import win32con
 from io import BytesIO
+import json
 
 from image_generator import ImageGenerator
 from image_processor import ImageProcessor
 
-class ImageGeneratorApp:
+class ImageGeneratorApp:    
+    
     def __init__(self, root):
         self.root = root
         self.root.title("AI Pixelated Image Generator")
@@ -29,10 +31,17 @@ class ImageGeneratorApp:
         
         # User preferences
         self.auto_remove_bg = tk.BooleanVar(value=True)
+        self.template_file = "prompt_template.txt"
         
         # Create output directory
         self.output_dir = "generated_images"
         os.makedirs(self.output_dir, exist_ok=True)
+        
+        # Default prompt template text
+        self.default_template_text = (
+            "Isometric {prompt} for cutout, with no shadows, 8-bit style, pixelated, isometric view, "
+            "not on any sort of platform, but floating on a white background"
+        )
         
         self.setup_ui()
         self.initialize_generator()
@@ -138,25 +147,39 @@ class ImageGeneratorApp:
         self.chat_history.insert(tk.END, "how your object is rendered. Use {prompt} as a placeholder.\n\n")
         self.chat_history.insert(tk.END, "Toggle 'Auto Remove Background' in the tools section\n")
         self.chat_history.insert(tk.END, "to control background removal.\n\n")
-        
-        # Prompt template section
+          # Prompt template section
         template_frame = ttk.LabelFrame(chat_frame, text="Prompt Template", padding="5")
         template_frame.pack(fill=tk.X, pady=(10, 0))
         
-        self.prompt_template = tk.Text(template_frame, height=2, wrap=tk.WORD)
-        self.prompt_template.pack(fill=tk.X, pady=(5, 5))
-        prompt_template_text = (
-            "Isometric {prompt} for cutout, with no shadows, 8-bit style, pixelated, isometric view, not on any sort of platform, but floating on a white background")
+        # Create a frame to contain text and scrollbar
+        template_container = ttk.Frame(template_frame)
+        template_container.pack(fill=tk.X, expand=True, pady=(5, 5))
+        
+        # Add scrollbar to template
+        template_scrollbar = ttk.Scrollbar(template_container, orient="vertical")
+        template_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Make template text area twice as big and scrollable
+        self.prompt_template = tk.Text(template_container, height=4, wrap=tk.WORD, 
+                                     yscrollcommand=template_scrollbar.set)
+        self.prompt_template.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        template_scrollbar.config(command=self.prompt_template.yview)
+          # Load template from file or use default
+        prompt_template_text = self.load_prompt_template()
         self.prompt_template.insert(tk.END, prompt_template_text)
         
-        ttk.Label(template_frame, text="Use {prompt} where your input should be inserted", font=("", 8)).pack(anchor=tk.W)
+        # Label and save button in a frame
+        template_actions = ttk.Frame(template_frame)
+        template_actions.pack(fill=tk.X, pady=(2, 0))
         
-        # Prompt input
+        ttk.Label(template_actions, text="Use {prompt} where your input should be inserted", font=("", 8)).pack(side=tk.LEFT)
+        ttk.Button(template_actions, text="Save Template", command=self.save_prompt_template).pack(side=tk.RIGHT)
+          # Prompt input
         prompt_frame = ttk.Frame(chat_frame)
         prompt_frame.pack(fill=tk.X, pady=(10, 0))
         
         ttk.Label(prompt_frame, text="Prompt:").pack(anchor=tk.W)
-        self.prompt_entry = tk.Text(prompt_frame, height=3, wrap=tk.WORD)
+        self.prompt_entry = tk.Text(prompt_frame, height=1, wrap=tk.WORD)
         self.prompt_entry.pack(fill=tk.X, pady=(5, 0))
         
         # Buttons
@@ -445,6 +468,35 @@ class ImageGeneratorApp:
         processed = ImageProcessor.remove_background(self.current_image)
         self.display_image(processed)
         self.add_to_chat("Background removed", "System")
+
+    def load_prompt_template(self):
+        """Load the prompt template from file if it exists"""
+        try:
+            if os.path.exists(self.template_file):
+                with open(self.template_file, 'r') as file:
+                    template_text = file.read().strip()
+                    if template_text:
+                        return template_text
+            return self.default_template_text
+        except Exception as e:
+            self.add_to_chat(f"Error loading template: {str(e)}", "System")
+            return self.default_template_text
+    
+    def save_prompt_template(self, template_text=None):
+        """Save the current prompt template to file"""
+        if template_text is None:
+            template_text = self.prompt_template.get("1.0", tk.END).strip()
+        
+        try:
+            with open(self.template_file, 'w') as file:
+                file.write(template_text)
+            self.add_to_chat("Prompt template saved to file", "System")
+            self.status_var.set("Template saved")
+            return True
+        except Exception as e:
+            self.add_to_chat(f"Error saving template: {str(e)}", "System")
+            self.status_var.set("Error saving template")
+            return False
 
 def main():
     root = tk.Tk()
