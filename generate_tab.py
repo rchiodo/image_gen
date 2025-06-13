@@ -22,7 +22,7 @@ def setup_generate_tab(parent, app):
     app.chat_history.insert(tk.END, "- 'medieval knight'\n")
     app.chat_history.insert(tk.END, "- 'magic potion bottle'\n")
     app.chat_history.insert(tk.END, "- 'fantasy sword'\n")
-    app.chat_history.insert(tk.END, "\nYou can customize the prompt template above to change\n")
+    app.chat_history.insert(tk.END, "\nYou can customize the prompt template below to change\n")
     app.chat_history.insert(tk.END, "how your object is rendered. Use {prompt} as a placeholder.\n\n")
     app.chat_history.insert(tk.END, "Toggle 'Auto Remove Background' in the tools section\n")
     app.chat_history.insert(tk.END, "to control background removal.\n\n")
