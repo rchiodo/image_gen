@@ -28,6 +28,7 @@ class ImageGeneratorApp:
         self.image_generator = None
         self.current_image = None
         self.current_photo = None
+        self.edit_history = []  # stack for undo
         
         # User preferences
         self.auto_remove_bg = tk.BooleanVar(value=True)
@@ -216,6 +217,9 @@ class ImageGeneratorApp:
         # Tool buttons
         tool_buttons = ttk.Frame(tools_frame)
         tool_buttons.pack(fill=tk.X)
+        # Undo button
+        ttk.Button(tool_buttons, text="Undo", command=self.undo_edit).pack(side=tk.LEFT, padx=(0, 5))
+        # Other editing tools
         ttk.Button(tool_buttons, text="More Pixelated", command=self.apply_more_pixelation).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(tool_buttons, text="Less Pixelated", command=self.apply_less_pixelation).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(tool_buttons, text="Remove Background", command=self.remove_background).pack(side=tk.LEFT, padx=(0, 5))
@@ -398,6 +402,8 @@ class ImageGeneratorApp:
             messagebox.showwarning("Warning", "No image to pixelate")
             return
         
+        # save state for undo
+        self.edit_history.append(self.current_image.copy())
         pixelated = ImageProcessor.pixelate(self.current_image, pixel_size=12)
         self.display_image(pixelated)
         self.add_to_chat("Applied more pixelation", "System")
@@ -408,6 +414,8 @@ class ImageGeneratorApp:
             messagebox.showwarning("Warning", "No image to pixelate")
             return
         
+        # save state for undo
+        self.edit_history.append(self.current_image.copy())
         pixelated = ImageProcessor.pixelate(self.current_image, pixel_size=4)
         self.display_image(pixelated)
         self.add_to_chat("Applied less pixelation", "System")
@@ -439,6 +447,8 @@ class ImageGeneratorApp:
             messagebox.showwarning("Warning", "No image to modify")
             return
         
+        # save state for undo
+        self.edit_history.append(self.current_image.copy())
         enhanced = ImageProcessor.adjust_contrast(self.current_image, 1.3)
         self.display_image(enhanced)
         self.add_to_chat("Increased contrast", "System")
@@ -449,6 +459,8 @@ class ImageGeneratorApp:
             messagebox.showwarning("Warning", "No image to modify")
             return
         
+        # save state for undo
+        self.edit_history.append(self.current_image.copy())
         enhanced = ImageProcessor.adjust_brightness(self.current_image, 1.2)
         self.display_image(enhanced)
         self.add_to_chat("Increased brightness", "System")
@@ -464,6 +476,8 @@ class ImageGeneratorApp:
         if new_size:
             try:
                 width, height = map(int, new_size.split(','))
+                # save state for undo
+                self.edit_history.append(self.current_image.copy())
                 resized = ImageProcessor.resize_image(self.current_image, (width, height), maintain_aspect=False)
                 self.display_image(resized)
                 self.add_to_chat(f"Resized to {width}x{height}", "System")
@@ -476,10 +490,22 @@ class ImageGeneratorApp:
             messagebox.showwarning("Warning", "No image to process")
             return
         
+        # save state for undo
+        self.edit_history.append(self.current_image.copy())
         # Use the background removal method from ImageProcessor
         processed = ImageProcessor.remove_background(self.current_image)
         self.display_image(processed)
         self.add_to_chat("Background removed", "System")
+
+    def undo_edit(self):
+        """Undo the last image edit"""
+        if not self.edit_history:
+            messagebox.showinfo("Info", "Nothing to undo")
+            return
+        previous = self.edit_history.pop()
+        self.display_image(previous)
+        self.add_to_chat("Undo edit", "System")
+        self.status_var.set("Undo performed")
 
     def load_prompt_template(self):
         """Load the prompt template from file if it exists"""
