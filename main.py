@@ -48,14 +48,26 @@ class ImageGeneratorApp:
     
     def setup_ui(self):
         """Setup the user interface"""
-        # Main container
+        # Main layout: canvas on left, controls on right in tabs
         main_container = ttk.Frame(self.root)
         main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        
-        # Create three main sections
-        self.create_canvas_section(main_container)
-        self.create_chat_section(main_container)
-        self.create_tools_section(main_container)
+        # Canvas section on left
+        canvas_container = ttk.Frame(main_container)
+        canvas_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.create_canvas_section(canvas_container)
+        # Tabs on right
+        tab_container = ttk.Frame(main_container)
+        tab_container.pack(side=tk.LEFT, fill=tk.BOTH, expand=False)
+        self.notebook = ttk.Notebook(tab_container)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+        # Generate tab: chat and prompt
+        gen_tab = ttk.Frame(self.notebook)
+        self.notebook.add(gen_tab, text="Generate")
+        self.create_chat_section(gen_tab)
+        # Edit tab: image editing tools
+        edit_tab = ttk.Frame(self.notebook)
+        self.notebook.add(edit_tab, text="Edit")
+        self.create_tools_section(edit_tab)
         
         # Status bar
         self.status_var = tk.StringVar()
