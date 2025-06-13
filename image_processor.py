@@ -5,7 +5,7 @@ Image processing utilities
 from PIL import Image, ImageFilter, ImageEnhance
 import os
 from rembg import remove
-from io import BytesIO
+import io
 
 class ImageProcessor:
     @staticmethod
@@ -59,17 +59,20 @@ class ImageProcessor:
             return None
     
     @staticmethod
-    def remove_background(image):
-        """Remove background using rembg"""
-        # Ensure RGBA
-        if image.mode != 'RGBA':
-            image = image.convert('RGBA')
-        # Convert to bytes
-        buf = BytesIO()
-        image.save(buf, format='PNG')
-        img_bytes = buf.getvalue()
-        # Call rembg
-        result_bytes = remove(img_bytes)
-        # Load back to PIL Image
-        new_image = Image.open(BytesIO(result_bytes)).convert('RGBA')
-        return new_image
+    def remove_background(image: Image.Image) -> Image.Image:
+        """Remove background using rembg with alpha‐matting tuned to preserve interior colors."""
+        buf_in = io.BytesIO()
+        image.save(buf_in, format="PNG")
+        img_bytes = buf_in.getvalue()
+
+        # Enable alpha matting and lower the foreground threshold so internal pixels aren't dropped
+        result_bytes = remove(
+            img_bytes,
+            alpha_matting=True,
+            alpha_matting_foreground_threshold=200,   # lower = more pixels kept
+            alpha_matting_background_threshold=10,
+            alpha_matting_erode_size=3
+        )
+
+        buf_out = io.BytesIO(result_bytes)
+        return Image.open(buf_out).convert("RGBA")

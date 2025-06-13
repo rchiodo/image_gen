@@ -27,6 +27,9 @@ class ImageGeneratorApp:
         self.current_image = None
         self.current_photo = None
         
+        # User preferences
+        self.auto_remove_bg = tk.BooleanVar(value=True)
+        
         # Create output directory
         self.output_dir = "generated_images"
         os.makedirs(self.output_dir, exist_ok=True)
@@ -121,18 +124,32 @@ class ImageGeneratorApp:
         chat_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, 0))
         chat_frame.configure(width=300)
         
-        # Chat history
+        # Chat history        
         self.chat_history = scrolledtext.ScrolledText(chat_frame, width=35, height=20, wrap=tk.WORD)
         self.chat_history.pack(fill=tk.BOTH, expand=True)
         self.chat_history.insert(tk.END, "Welcome to AI Pixelated Image Generator!\n\n")
-        self.chat_history.insert(tk.END, "Enter a prompt below to generate isometric pixel art.\n")
+        self.chat_history.insert(tk.END, "Enter a prompt below to generate pixel art.\n")
         self.chat_history.insert(tk.END, "Examples (just the object name):\n")
         self.chat_history.insert(tk.END, "- 'treasure chest'\n")
         self.chat_history.insert(tk.END, "- 'medieval knight'\n")
         self.chat_history.insert(tk.END, "- 'magic potion bottle'\n")
         self.chat_history.insert(tk.END, "- 'fantasy sword'\n")
-        self.chat_history.insert(tk.END, "\nNote: Background removal happens automatically!\n\n")
-        self.chat_history.insert(tk.END, "\nNote: Background removal happens automatically!\n\n")
+        self.chat_history.insert(tk.END, "\nYou can customize the prompt template above to change\n")
+        self.chat_history.insert(tk.END, "how your object is rendered. Use {prompt} as a placeholder.\n\n")
+        self.chat_history.insert(tk.END, "Toggle 'Auto Remove Background' in the tools section\n")
+        self.chat_history.insert(tk.END, "to control background removal.\n\n")
+        
+        # Prompt template section
+        template_frame = ttk.LabelFrame(chat_frame, text="Prompt Template", padding="5")
+        template_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        self.prompt_template = tk.Text(template_frame, height=2, wrap=tk.WORD)
+        self.prompt_template.pack(fill=tk.X, pady=(5, 5))
+        prompt_template_text = (
+            "Isometric {prompt} for cutout, with no shadows, 8-bit style, pixelated, isometric view, not on any sort of platform, but floating on a white background")
+        self.prompt_template.insert(tk.END, prompt_template_text)
+        
+        ttk.Label(template_frame, text="Use {prompt} where your input should be inserted", font=("", 8)).pack(anchor=tk.W)
         
         # Prompt input
         prompt_frame = ttk.Frame(chat_frame)
@@ -170,6 +187,9 @@ class ImageGeneratorApp:
         ttk.Button(tool_buttons, text="Increase Contrast", command=self.increase_contrast).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(tool_buttons, text="Increase Brightness", command=self.increase_brightness).pack(side=tk.LEFT, padx=(0, 5))
         ttk.Button(tool_buttons, text="Resize Image", command=self.resize_image).pack(side=tk.LEFT)
+        
+        # Checkbox for automatic background removal
+        ttk.Checkbutton(tools_frame, text="Auto Remove Background", variable=self.auto_remove_bg).pack(anchor=tk.W, pady=(10, 0))
     
     def initialize_generator(self):
         """Initialize the image generator"""
@@ -190,8 +210,9 @@ class ImageGeneratorApp:
         """Get prompt from entry widget"""
         base_prompt = self.prompt_entry.get("1.0", tk.END).strip()
         if base_prompt: 
-            # Automatically enhance prompt for isometric pixel art
-            enhanced_prompt = f"Sideways shot of a {base_prompt} for cutout, with no shadows, 8-bit style, pixelated, isometric view"
+            # Get the template and replace {prompt} placeholder with user input
+            template = self.prompt_template.get("1.0", tk.END).strip()
+            enhanced_prompt = template.replace("{prompt}", base_prompt)
             return enhanced_prompt
         return base_prompt
     
@@ -273,8 +294,9 @@ class ImageGeneratorApp:
     
     def on_generation_complete(self, image, message):
         """Handle successful image generation"""
-        # Automatically remove background from generated images
-        # image = ImageProcessor.remove_background(image)
+        # Automatically remove background from generated images if enabled
+        if self.auto_remove_bg.get():
+            image = ImageProcessor.remove_background(image)
         
         self.display_image(image)
         self.add_to_chat(message, "System")
