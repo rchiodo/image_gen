@@ -15,6 +15,8 @@ import json
 
 from image_generator import ImageGenerator
 from image_processor import ImageProcessor
+from edit_tab import setup_edit_tab
+from generate_tab import setup_generate_tab
 
 class ImageGeneratorApp:    
     
@@ -64,11 +66,13 @@ class ImageGeneratorApp:
         # Generate tab: chat and prompt
         gen_tab = ttk.Frame(self.notebook)
         self.notebook.add(gen_tab, text="Generate")
-        self.create_chat_section(gen_tab)
+        # Delegate building of generate controls
+        setup_generate_tab(gen_tab, self)
         # Edit tab: image editing tools
         edit_tab = ttk.Frame(self.notebook)
         self.notebook.add(edit_tab, text="Edit")
-        self.create_tools_section(edit_tab)
+        # Delegate building of edit controls
+        setup_edit_tab(edit_tab, self)
         
         # Status bar
         self.status_var = tk.StringVar()
@@ -140,95 +144,10 @@ class ImageGeneratorApp:
                     tags="background"
                 )
     
-    def create_chat_section(self, parent):
-        """Create the chat/prompt section"""
-        chat_frame = ttk.LabelFrame(parent, text="AI Chat", padding="10")
-        chat_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(5, 0))
-        chat_frame.configure(width=300)
-        
-        # Chat history        
-        self.chat_history = scrolledtext.ScrolledText(chat_frame, width=35, height=20, wrap=tk.WORD)
-        self.chat_history.pack(fill=tk.BOTH, expand=True)
-        self.chat_history.insert(tk.END, "Welcome to AI Pixelated Image Generator!\n\n")
-        self.chat_history.insert(tk.END, "Enter a prompt below to generate pixel art.\n")
-        self.chat_history.insert(tk.END, "Examples (just the object name):\n")
-        self.chat_history.insert(tk.END, "- 'treasure chest'\n")
-        self.chat_history.insert(tk.END, "- 'medieval knight'\n")
-        self.chat_history.insert(tk.END, "- 'magic potion bottle'\n")
-        self.chat_history.insert(tk.END, "- 'fantasy sword'\n")
-        self.chat_history.insert(tk.END, "\nYou can customize the prompt template above to change\n")
-        self.chat_history.insert(tk.END, "how your object is rendered. Use {prompt} as a placeholder.\n\n")
-        self.chat_history.insert(tk.END, "Toggle 'Auto Remove Background' in the tools section\n")
-        self.chat_history.insert(tk.END, "to control background removal.\n\n")
-          # Prompt template section
-        template_frame = ttk.LabelFrame(chat_frame, text="Prompt Template", padding="5")
-        template_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        # Create a frame to contain text and scrollbar
-        template_container = ttk.Frame(template_frame)
-        template_container.pack(fill=tk.X, expand=True, pady=(5, 5))
-        
-        # Add scrollbar to template
-        template_scrollbar = ttk.Scrollbar(template_container, orient="vertical")
-        template_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        
-        # Make template text area twice as big and scrollable
-        self.prompt_template = tk.Text(template_container, height=4, wrap=tk.WORD, 
-                                     yscrollcommand=template_scrollbar.set)
-        self.prompt_template.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        template_scrollbar.config(command=self.prompt_template.yview)
-          # Load template from file or use default
-        prompt_template_text = self.load_prompt_template()
-        self.prompt_template.insert(tk.END, prompt_template_text)
-        
-        # Label and save button in a frame
-        template_actions = ttk.Frame(template_frame)
-        template_actions.pack(fill=tk.X, pady=(2, 0))
-        
-        ttk.Label(template_actions, text="Use {prompt} where your input should be inserted", font=("", 8)).pack(side=tk.LEFT)
-        ttk.Button(template_actions, text="Save Template", command=self.save_prompt_template).pack(side=tk.RIGHT)
-          # Prompt input
-        prompt_frame = ttk.Frame(chat_frame)
-        prompt_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        ttk.Label(prompt_frame, text="Prompt:").pack(anchor=tk.W)
-        self.prompt_entry = tk.Text(prompt_frame, height=1, wrap=tk.WORD)
-        self.prompt_entry.pack(fill=tk.X, pady=(5, 0))
-        
-        # Buttons
-        button_frame = ttk.Frame(chat_frame)
-        button_frame.pack(fill=tk.X, pady=(10, 0))
-        
-        self.generate_btn = ttk.Button(button_frame, text="Generate New", command=self.generate_image)
-        self.generate_btn.pack(fill=tk.X, pady=(0, 5))
-        
-        self.modify_btn = ttk.Button(button_frame, text="Modify Current", command=self.modify_image)
-        self.modify_btn.pack(fill=tk.X)
-        
-        # Progress bar
-        self.progress = ttk.Progressbar(chat_frame, mode='indeterminate')
-        self.progress.pack(fill=tk.X, pady=(10, 0))
+    # Generate controls have been moved to generate_tab.setup_generate_tab
     
-    def create_tools_section(self, parent):
-        """Create the tools section"""
-        tools_frame = ttk.LabelFrame(parent, text="Image Tools", padding="10")
-        tools_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10, 0))
-        
-        # Tool buttons
-        tool_buttons = ttk.Frame(tools_frame)
-        tool_buttons.pack(fill=tk.X)
-        # Undo button
-        ttk.Button(tool_buttons, text="Undo", command=self.undo_edit).pack(side=tk.LEFT, padx=(0, 5))
-        # Other editing tools
-        ttk.Button(tool_buttons, text="More Pixelated", command=self.apply_more_pixelation).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(tool_buttons, text="Less Pixelated", command=self.apply_less_pixelation).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(tool_buttons, text="Remove Background", command=self.remove_background).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(tool_buttons, text="Increase Contrast", command=self.increase_contrast).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(tool_buttons, text="Increase Brightness", command=self.increase_brightness).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(tool_buttons, text="Resize Image", command=self.resize_image).pack(side=tk.LEFT)
-        
-        # Checkbox for automatic background removal
-        ttk.Checkbutton(tools_frame, text="Auto Remove Background", variable=self.auto_remove_bg).pack(anchor=tk.W, pady=(10, 0))
+
+    # Edit controls have been moved to edit_tab.setup_edit_tab
     
     def initialize_generator(self):
         """Initialize the image generator"""
