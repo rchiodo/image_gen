@@ -36,6 +36,8 @@ class ImageGenerator:
                 prompt=prompt,
                 size=size,
                 quality="standard",
+                background="transparent",
+                output_format="png",
                 n=1,
             )
             
@@ -44,11 +46,7 @@ class ImageGenerator:
             # Download the image
             image_response = requests.get(image_url)
             image = Image.open(BytesIO(image_response.content))
-            
-            # Apply additional pixelation effect
-            image = self.apply_pixelation(image)
-            # Remove background (white) to transparent
-            image = self.make_background_transparent(image)
+           
             return image
             
         except Exception as e:
@@ -61,32 +59,3 @@ class ImageGenerator:
         modify_prompt = f"Modify this concept: {prompt}, pixel art style, 8-bit, pixelated"
         return self.generate_image(modify_prompt, size)
     
-    def apply_pixelation(self, image, pixel_size=8):
-        """Apply pixelation effect to an image"""
-        # Get original size
-        original_size = image.size
-        
-        # Resize down
-        small_size = (original_size[0] // pixel_size, original_size[1] // pixel_size)
-        small_image = image.resize(small_size, Image.NEAREST)
-        
-        # Resize back up
-        pixelated_image = small_image.resize(original_size, Image.NEAREST)
-        
-        return pixelated_image
-    
-    def make_background_transparent(self, image, threshold=250):
-        """Make white (or near-white) background transparent"""
-        # Ensure image has alpha channel
-        img = image.convert("RGBA")
-        datas = img.getdata()
-        new_data = []
-        for item in datas:
-            r, g, b, a = item
-            # Treat near-white as background
-            if r >= threshold and g >= threshold and b >= threshold:
-                new_data.append((255, 255, 255, 0))
-            else:
-                new_data.append(item)
-        img.putdata(new_data)
-        return img

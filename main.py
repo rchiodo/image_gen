@@ -59,6 +59,8 @@ class ImageGeneratorApp:
         # Canvas for displaying image
         self.canvas = tk.Canvas(canvas_frame, bg='white', width=600, height=600)
         self.canvas.pack(fill=tk.BOTH, expand=True)
+        # Redraw background on canvas resize
+        self.canvas.bind('<Configure>', lambda event: self.create_checkered_background())
         
         # Create checkered background pattern
         self.create_checkered_background()
@@ -83,8 +85,8 @@ class ImageGeneratorApp:
         self.canvas.delete("background")
         
         # Get canvas dimensions
-        width = self.canvas.winfo_reqwidth()
-        height = self.canvas.winfo_reqheight()
+        width = self.canvas.winfo_width()
+        height = self.canvas.winfo_height()
         
         # If canvas isn't initialized yet, use default size
         if width <= 1 or height <= 1:
@@ -189,7 +191,7 @@ class ImageGeneratorApp:
         base_prompt = self.prompt_entry.get("1.0", tk.END).strip()
         if base_prompt: 
             # Automatically enhance prompt for isometric pixel art
-            enhanced_prompt = f"Isometric pixel art of a {base_prompt}, rendered as a cutout game sprite with no background, similar to a transparent PNG."
+            enhanced_prompt = f"Sideways shot of a {base_prompt} for cutout, with no shadows, 8-bit style, pixelated, isometric view"
             return enhanced_prompt
         return base_prompt
     
@@ -272,7 +274,7 @@ class ImageGeneratorApp:
     def on_generation_complete(self, image, message):
         """Handle successful image generation"""
         # Automatically remove background from generated images
-        image = ImageProcessor.remove_background(image)
+        # image = ImageProcessor.remove_background(image)
         
         self.display_image(image)
         self.add_to_chat(message, "System")
