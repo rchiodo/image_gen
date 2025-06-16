@@ -31,6 +31,11 @@ class ImageGeneratorApp:
         self.current_image = None
         self.current_photo = None
         self.edit_history = []  # stack for undo
+        # Selection state
+        self.selection_rect = None
+        self.selection_anim = None
+        self.selection_offset = 0
+        self.selection_coords = None  # (x0, y0, x1, y1)
         
         # User preferences
         self.auto_remove_bg = tk.BooleanVar(value=True)
@@ -143,6 +148,8 @@ class ImageGeneratorApp:
                     outline=color,
                     tags="background"
                 )
+        # ensure background stays below image and selection
+        self.canvas.tag_lower("background")
     
     # Generate controls have been moved to generate_tab.setup_generate_tab
     
@@ -190,15 +197,24 @@ class ImageGeneratorApp:
                 display_image.thumbnail((canvas_width - 20, canvas_height - 20), Image.NEAREST)
                 
                 self.current_photo = ImageTk.PhotoImage(display_image)
-                self.canvas.delete("all")
+                # remove only previous image, keep background and selection
+                self.canvas.delete("image")
+                # draw new image and tag it
                 self.canvas.create_image(
-                    canvas_width // 2, 
-                    canvas_height // 2, 
-                    anchor=tk.CENTER, 
-                    image=self.current_photo
+                    canvas_width // 2,
+                    canvas_height // 2,
+                    anchor=tk.CENTER,
+                    image=self.current_photo,
+                    tags="image"
                 )
-                
+                # update current image and default selection to full image area
+                # update current image and default selection to full image area
                 self.current_image = image
+                x0 = canvas_width//2 - display_image.width//2
+                y0 = canvas_height//2 - display_image.height//2
+                x1 = x0 + display_image.width
+                y1 = y0 + display_image.height
+                self.set_selection((x0, y0, x1, y1))
     
     def generate_image(self):
         """Generate new image from prompt"""
@@ -314,6 +330,11 @@ class ImageGeneratorApp:
         self.current_photo = None
         self.add_to_chat("Canvas cleared", "System")
         self.status_var.set("Canvas cleared")
+        # clear any selection
+        if hasattr(self, 'selection_anim') and self.selection_anim:
+            self.canvas.after_cancel(self.selection_anim)
+        self.canvas.delete('selection')
+        self.selection_coords = None
     
     def apply_more_pixelation(self):
         """Apply more pixelation to current image"""
@@ -425,7 +446,39 @@ class ImageGeneratorApp:
         self.display_image(previous)
         self.add_to_chat("Undo edit", "System")
         self.status_var.set("Undo performed")
-
+    
+    def set_selection(self, coords):
+        """Set and start animating the selection rectangle."""
+        # coords: (x0, y0, x1, y1) in canvas coordinates
+        self.selection_coords = coords
+        # reset selection animation
+        if self.selection_anim:
+            self.canvas.after_cancel(self.selection_anim)
+        self.selection_offset = 0
+        # remove existing selection
+        self.canvas.delete('selection')
+        # draw new selection rectangle with dash pattern
+        x0, y0, x1, y1 = coords
+        self.selection_rect = self.canvas.create_rectangle(
+            x0, y0, x1, y1,
+            outline='black', dash=(4,2), tags='selection'
+        )
+        # start marching-ants animation by updating dashoffset
+        self.selection_offset = 0
+        self.selection_anim = self.canvas.after(50, self.animate_selection)
+    
+    def animate_selection(self):
+        """Animate the marching ants effect by updating dash offset."""
+        if not getattr(self, 'selection_rect', None):
+            return
+        # increment dashoffset for continuous marching effect
+        self.selection_offset = (self.selection_offset + 1) % 16
+        self.canvas.itemconfig(self.selection_rect, dashoffset=self.selection_offset)
+        # ensure selection stays on top
+        self.canvas.tag_raise('selection')
+        # schedule next frame
+        self.selection_anim = self.canvas.after(50, self.animate_selection)
+    
     def load_prompt_template(self):
         """Load the prompt template from file if it exists"""
         try:
